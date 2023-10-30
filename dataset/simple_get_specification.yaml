@@ -1,0 +1,84 @@
+openapi: 3.0.1
+info:
+  title: Open api sample get specification
+  description: This is a very simple specification for alitest lib testing purposed
+paths:
+  /pet/{petId}:
+    get:
+      tags:
+      - pet
+      summary: Find pet by ID
+      description: Returns a single pet
+      operationId: getPetById
+      parameters:
+      - name: petId
+        in: path
+        description: ID of pet to return
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        200:
+          description: successful operation
+          x-ali-parameters:
+            petId:
+              value: 0a62b985-17b5-48ee-ae04-ae0c99cb1109
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        400:
+          description: Invalid ID supplied
+          x-ali-parameters:
+            petId:
+              value: bad-format
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Pet not found
+          x-ali-parameters:
+            petId:
+              value: 9051be9a-5aa2-4912-9786-01ffe22401d7
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Pet:
+      required:
+      - id
+      - name
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          example: doggie
+      xml:
+        name: Pet
+    Error:
+      required:
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+        description:
+          type: string
+      xml:
+        name: Error
