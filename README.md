@@ -1,3 +1,4 @@
+![build](https://github.com/toolzup/alitest/actions/workflows/go.yml/badge.svg)
 # alitest
 
 Pragmatique
