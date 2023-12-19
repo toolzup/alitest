@@ -1,8 +1,10 @@
 package alitest
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -101,6 +103,10 @@ func (o OpenApiPath) runTests(t *testing.T, url string) {
 			o.Get.runTests(t, url, http.MethodGet)
 		}
 
+		if o.Post != nil {
+			o.Post.runTests(t, url, http.MethodPost)
+		}
+
 		// TODO check the response schema if any
 
 	})
@@ -178,9 +184,12 @@ type OpenApiResponse struct {
 	Description   string                  `json:"description" yaml:"description"`
 	Json          OpenApiResponseContent  `json:"application/json" yaml:"application/json"`
 	AliParameters map[string]AliParameter `json:"x-ali-parameters" yaml:"x-ali-parameters"`
+	AliBody       interface{}             `json:"x-ali-body" yaml:"x-ali-body"`
 }
 
 func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status int) {
+	var reader io.Reader
+	var err error
 	// TODO compute the length ?
 	resolvedURL := ctx.url
 
@@ -192,20 +201,39 @@ func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status i
 		paramValue, _ := o.AliParameters[params.Name]
 		resolvedURL = strings.ReplaceAll(resolvedURL, fmt.Sprintf("{%s}", params.Name), fmt.Sprintf("%s", paramValue.Value))
 	}
+	if o.AliBody != nil {
+		reader, err = ioReader(o.AliBody)
+	}
+
+	if err != nil {
+		t.Fatalf("Got unexpected marshalling error (%v) when performing a %s on %s", err, ctx.verb, resolvedURL)
+	}
 
 	// TODO handle the error
-	request, _ := http.NewRequest(ctx.verb, resolvedURL, nil)
+	request, _ := http.NewRequest(ctx.verb, resolvedURL, reader)
 	request.Header.Add("Accept", "application/json")
 
 	netClient := &http.Client{
 		Timeout: time.Second * 10,
 	}
 
-	response, _ := netClient.Do(request)
+	response, err := netClient.Do(request)
+
+	if err != nil {
+		t.Fatalf("Got unexpected error (%v) when performing a %s on %s", err, ctx.verb, resolvedURL)
+	}
 
 	if response.StatusCode != status {
 		t.Fatalf("Expect status %d but got status %d", status, response.StatusCode)
 	}
+}
+
+func ioReader(data interface{}) (io.Reader, error) {
+	jsonEncoded, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewBuffer(jsonEncoded), nil
 }
 
 type OpenApiResponseContent struct {

@@ -3,6 +3,32 @@ info:
   title: Open api sample get specification
   description: This is a very simple specification for alitest lib testing purposed
 paths:
+  /pet:
+    post:
+      tags:
+      - pet
+      summary: create pet
+      description: create a new pet
+      operationId: createPet
+      requestBody:
+        description: Pet object with any required informations
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+        required: true
+      responses:
+        200:
+          description: successful operation
+          x-ali-body:
+            name: Medor
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
   /pet/{petId}:
     get:
       tags:

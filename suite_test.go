@@ -23,8 +23,8 @@ var wrongJson string
 //go:embed dataset/wrong.yaml
 var wrongYaml string
 
-//go:embed dataset/simple_get_specification.yaml
-var simpleGet string
+//go:embed dataset/simple_pet_specification.yaml
+var petSpec string
 
 func TestParse(t *testing.T) {
 	type testCase struct {
@@ -102,6 +102,9 @@ func TestParse(t *testing.T) {
 // TestRun is a nominal global test for a simple specification file.
 // There is one endpoint, three status code (200, 400, 404)
 func TestRun(t *testing.T) {
+	type Pet struct {
+		Name string `json:"name"`
+	}
 	type PetResult struct {
 		Id   int64  `json:"id"`
 		Name string `json:"name"`
@@ -116,22 +119,15 @@ func TestRun(t *testing.T) {
 	var badFormatCalled bool
 	var notFoundCalled bool
 
-	integrationSuite, err := alitest.ParseString(simpleGet)
+	integrationSuite, err := alitest.ParseString(petSpec)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handleGet := func(w http.ResponseWriter, r *http.Request) {
 		var err error
-
-		if r.Method != http.MethodGet {
-			t.Fatalf("expect %s, but got %s", http.MethodGet, r.Method)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-
 		encoder := json.NewEncoder(w)
-		t.Log("---------------------------------------------- : ", r.URL.Path)
 
 		if r.URL.Path == "/pet/0a62b985-17b5-48ee-ae04-ae0c99cb1109" {
 			// Sucess case
@@ -158,6 +154,49 @@ func TestRun(t *testing.T) {
 
 		if err != nil {
 			t.Fatalf("expect nil error, but got %v", err)
+		}
+	}
+
+	handlePost := func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		var pet Pet
+		decoder := json.NewDecoder(r.Body)
+		encoder := json.NewEncoder(w)
+		if r.URL.Path != "/pet" {
+			t.Fatalf("expect nil error, but got %v", err)
+			return
+		}
+
+		err = decoder.Decode(&pet)
+		if err != nil {
+			t.Fatalf("expect nil error, but got %v", err)
+			return
+		}
+
+		if pet.Name != "Medor" {
+			t.Fatalf("expect Medor, but got %s as pet name", pet.Name)
+			return
+		}
+
+		err = encoder.Encode(PetResult{
+			Id:   321654,
+			Name: "Medor",
+		})
+
+		if err != nil {
+			t.Fatalf("expect nil error, but got %v", err)
+		}
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleGet(w, r)
+		case http.MethodPost:
+			handlePost(w, r)
+		default:
+			t.Fatalf("expect %s, but got %s", http.MethodGet, r.Method)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}))
 	t.Cleanup(srv.Close)
