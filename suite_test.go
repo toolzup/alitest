@@ -118,6 +118,7 @@ func TestRun(t *testing.T) {
 	var nominalCalled bool
 	var badFormatCalled bool
 	var notFoundCalled bool
+	var expiredCalled bool
 
 	integrationSuite, err := alitest.ParseString(petSpec)
 
@@ -150,6 +151,13 @@ func TestRun(t *testing.T) {
 				Description: "No pet found for the given id : '9051be9a-5aa2-4912-9786-01ffe22401d7'",
 			})
 			notFoundCalled = true
+		} else if r.URL.Path == "/pet/expired" {
+			w.WriteHeader(419)
+			err = encoder.Encode(ErrResult{
+				Type:        "ExpiredResource",
+				Description: "some expiration",
+			})
+			expiredCalled = true
 		}
 
 		if err != nil {
@@ -177,6 +185,8 @@ func TestRun(t *testing.T) {
 			t.Fatalf("expect Medor, but got %s as pet name", pet.Name)
 			return
 		}
+
+		w.WriteHeader(http.StatusCreated)
 
 		err = encoder.Encode(PetResult{
 			Id:   321654,
@@ -213,6 +223,10 @@ func TestRun(t *testing.T) {
 
 	if !notFoundCalled {
 		t.Fatal("not found case not covered")
+	}
+
+	if !expiredCalled {
+		t.Fatal("expired case not covered")
 	}
 }
 

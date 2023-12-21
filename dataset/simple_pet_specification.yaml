@@ -18,7 +18,7 @@ paths:
               $ref: '#/components/schemas/Pet'
         required: true
       responses:
-        200:
+        201:
           description: successful operation
           x-ali-body:
             name: Medor
@@ -74,6 +74,18 @@ paths:
           x-ali-parameters:
             petId:
               value: 9051be9a-5aa2-4912-9786-01ffe22401d7
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Error'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        419:
+          description: Invalid ID supplied
+          x-ali-parameters:
+            petId:
+              value: expired
           content:
             application/xml:
               schema:
