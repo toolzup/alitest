@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/wI2L/jsondiff"
 	"gopkg.in/yaml.v3"
 )
 
@@ -197,6 +198,13 @@ type OpenApiResponse struct {
 	Json          OpenApiResponseContent  `json:"application/json" yaml:"application/json"`
 	AliParameters map[string]AliParameter `json:"x-ali-parameters" yaml:"x-ali-parameters"`
 	AliBody       interface{}             `json:"x-ali-body" yaml:"x-ali-body"`
+	AliResponse   *aliResponse            `json:"x-ali-response" yaml:"x-ali-response"`
+}
+
+type aliResponse struct {
+	// Ignore id array of json pointer string to exclude from check
+	Ignore   []string    `json:"ignore" yaml:"ignore"`
+	Expected interface{} `json:"expected" yaml:"expected"`
 }
 
 func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status int) {
@@ -238,6 +246,44 @@ func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status i
 	if response.StatusCode != status {
 		t.Fatalf("Expect status %d but got status %d", status, response.StatusCode)
 	}
+
+	// Stop the process now, no returned data to verify
+	if o.AliResponse == nil {
+		return
+	}
+
+	expectedPayload, err := json.Marshal(o.AliResponse.Expected)
+
+	if err != nil {
+		t.Fatalf("Got unexpected marshalling error (%v) when reading expected response from spec for a %s on %s", err, ctx.verb, resolvedURL)
+	}
+
+	actualPayload, err := io.ReadAll(response.Body)
+
+	if err != nil {
+		t.Fatalf("Got unexpected error (%v) when reading response from %s on %s", err, ctx.verb, resolvedURL)
+	}
+
+	opts := []jsondiff.Option{
+		jsondiff.Equivalent(),
+	}
+
+	if len(o.AliResponse.Ignore) > 0 {
+		opts = append(opts, jsondiff.Ignores(o.AliResponse.Ignore...))
+	}
+
+	diff, err := jsondiff.CompareJSON(
+		actualPayload,
+		expectedPayload,
+		opts...,
+	)
+
+	if len(diff) > 0 {
+		t.Fatalf("Got differences on expectedPayload : %s, actualPayload: %s. => %v", string(expectedPayload), string(actualPayload), diff)
+	} else {
+		t.Logf("Expected payload: %s and actual one : %s do match. Ignored fields : %v", string(expectedPayload), string(actualPayload), o.AliResponse.Ignore)
+	}
+
 }
 
 func ioReader(data interface{}) (io.Reader, error) {
