@@ -276,7 +276,7 @@ func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status i
 	diffPass, diffDetails := o.AliResponse.Compare(actualPayload)
 
 	if !diffPass {
-		t.Fatalf("Got differences on response payload %s", diffDetails)
+		t.Fatalf("Got differences on response payload %s, for the returned payalod %s", diffDetails, string(actualPayload))
 	} else {
 		t.Logf("Diff check pass for %s. Details : %s", string(actualPayload), diffDetails)
 	}
