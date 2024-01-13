@@ -51,8 +51,7 @@ paths:
             petId:
               value: 0a62b985-17b5-48ee-ae04-ae0c99cb1109
           x-ali-response:
-            ignore:
-            - '/id'
+            acceptAdditionalProps: true
             expected:
               name: Medor
           content:
