@@ -98,7 +98,7 @@ func (p OpenApiPath) CountOperations() int {
 
 func (o OpenApiPath) runTests(t *testing.T, url string) {
 	// TODO check the operations + the path
-	t.Run(fmt.Sprintf("run tests for path %s", url), func(t *testing.T) {
+	t.Run("", func(t *testing.T) {
 
 		if o.Get != nil {
 			o.Get.runTests(t, url, http.MethodGet)
@@ -116,35 +116,36 @@ func (o OpenApiPath) runTests(t *testing.T, url string) {
 type OpenApiOperation struct {
 	Summary     string             `json:"summary" yaml:"summary"`
 	Description string             `json:"description" yaml:"description"`
+	OperationID string             `json:"operationId" yaml:"operationId"`
 	Parameters  []OpenApiParameter `json:"parameters" yaml:"parameters"`
 	Responses   OpenApiResponses   `json:"responses" yaml:"responses"`
 }
 
 func (o OpenApiOperation) runTests(t *testing.T, url, verb string) {
-	t.Run(fmt.Sprintf("found an operation: %s", o.Description), func(t *testing.T) {
+	t.Run(o.OperationID, func(t *testing.T) {
 		ctx := operationRunContext{url: url, verb: verb, parameters: o.Parameters}
 		if o.Responses.Ok != nil {
-			t.Run("Run tests for status: 200", func(t *testing.T) {
+			t.Run("200", func(t *testing.T) {
 				o.Responses.Ok.runTest(t, ctx, http.StatusOK)
 			})
 		}
 		if o.Responses.Created != nil {
-			t.Run("Run tests for status: 201", func(t *testing.T) {
+			t.Run("201", func(t *testing.T) {
 				o.Responses.Created.runTest(t, ctx, http.StatusCreated)
 			})
 		}
 		if o.Responses.BadRequest != nil {
-			t.Run("Run tests for status: 400", func(t *testing.T) {
+			t.Run("400", func(t *testing.T) {
 				o.Responses.BadRequest.runTest(t, ctx, http.StatusBadRequest)
 			})
 		}
 		if o.Responses.NotFound != nil {
-			t.Run("Run tests for status: 404", func(t *testing.T) {
+			t.Run("404", func(t *testing.T) {
 				o.Responses.NotFound.runTest(t, ctx, http.StatusNotFound)
 			})
 		}
 		if o.Responses.Expired != nil {
-			t.Run("Run tests for status: 419", func(t *testing.T) {
+			t.Run("419", func(t *testing.T) {
 				o.Responses.Expired.runTest(t, ctx, 419)
 			})
 		}
