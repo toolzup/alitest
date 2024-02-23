@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -223,20 +224,34 @@ func (r AliResponse) Compare(actualPayload []byte) (bool, string) {
 	return res == diff.FullMatch || (res == diff.SupersetMatch && r.AcceptAdditionalProps), details
 }
 
+func (o OpenApiResponse) ResolveURL(rawUrl string, params []OpenApiParameter) string {
+	resolvedURL := strings.TrimSuffix(rawUrl, "/")
+	queryParams := ""
+	queryPrefix := "?"
+
+	for _, param := range params {
+		switch param.In {
+		case Path:
+			// TODO handle not provided parameter => failed
+			paramValue, _ := o.AliParameters[param.Name]
+			resolvedURL = strings.ReplaceAll(resolvedURL, fmt.Sprintf("{%s}", param.Name), fmt.Sprintf("%s", paramValue.Value))
+		case Query:
+			paramValue, present := o.AliParameters[param.Name]
+			if present {
+				queryParams = fmt.Sprintf("%s%s%s=%s", queryParams, queryPrefix, param.Name, url.QueryEscape(fmt.Sprintf("%s", paramValue.Value)))
+				queryPrefix = "&"
+			}
+		}
+	}
+	resolvedURL = resolvedURL + queryParams
+
+	return resolvedURL
+}
+
 func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status int) {
 	var reader io.Reader
 	var err error
-	// TODO compute the length ?
-	resolvedURL := ctx.url
-
-	for _, params := range ctx.parameters {
-		if params.In != Path {
-			continue
-		}
-		// TODO handle not provided parameter => failed
-		paramValue, _ := o.AliParameters[params.Name]
-		resolvedURL = strings.ReplaceAll(resolvedURL, fmt.Sprintf("{%s}", params.Name), fmt.Sprintf("%s", paramValue.Value))
-	}
+	resolvedURL := o.ResolveURL(ctx.url, ctx.parameters)
 	if o.AliBody != nil {
 		reader, err = ioReader(o.AliBody)
 	}
