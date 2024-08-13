@@ -131,6 +131,7 @@ func TestRun(t *testing.T) {
 		encoder := json.NewEncoder(w)
 
 		if r.URL.Path == "/pet/0a62b985-17b5-48ee-ae04-ae0c99cb1109" {
+			http.SetCookie(w, &http.Cookie{Name: "x-ali-session", Value: "some-value", Domain: "test.com", HttpOnly: true, Secure: true})
 			// Sucess case
 			err = encoder.Encode(PetResult{
 				Id:   321654,
@@ -183,6 +184,17 @@ func TestRun(t *testing.T) {
 
 		if pet.Name != "Medor" {
 			t.Fatalf("expect Medor, but got %s as pet name", pet.Name)
+			return
+		}
+
+		cookie, err := r.Cookie("x-ali-session")
+		if errors.Is(err, http.ErrNoCookie) {
+			t.Fatal("expect x-ali-session cookie, but got nothing")
+			return
+		}
+
+		if cookie.Value != "some-value" {
+			t.Fatalf("expect some-value, but got %s as x-ali-session cookie value", cookie.Value)
 			return
 		}
 

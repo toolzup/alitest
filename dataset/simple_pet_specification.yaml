@@ -22,6 +22,9 @@ paths:
           description: successful operation
           x-ali-body:
             name: Medor
+          x-ali-request-cookies:
+            - name: x-ali-session
+              value: some-value
           content:
             application/xml:
               schema:
@@ -54,6 +57,12 @@ paths:
             acceptAdditionalProps: true
             expected:
               name: Medor
+          x-ali-response-cookies:
+            - name: x-ali-session
+              value: some-value
+              httpOnly: true
+              secure: true
+              domain: test.com
           content:
             application/xml:
               schema:

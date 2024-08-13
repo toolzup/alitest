@@ -201,12 +201,23 @@ type OpenApiResponses struct {
 	Expired      *OpenApiResponse `json:"419" yaml:"419"`
 }
 
+type AliCookie struct {
+	Name     string `json:"name" yaml:"name"`
+	Value    string `json:"value" yaml:"value"`
+	Path     string `json:"path" yaml:"path"`
+	Domain   string `json:"domain" yaml:"domain"`
+	Secure   bool   `json:"secure" yaml:"secure"`
+	HttpOnly bool   `json:"httpOnly" yaml:"httpOnly"`
+}
+
 type OpenApiResponse struct {
-	Description   string                  `json:"description" yaml:"description"`
-	Json          OpenApiResponseContent  `json:"application/json" yaml:"application/json"`
-	AliParameters map[string]AliParameter `json:"x-ali-parameters" yaml:"x-ali-parameters"`
-	AliBody       interface{}             `json:"x-ali-body" yaml:"x-ali-body"`
-	AliResponse   *AliResponse            `json:"x-ali-response" yaml:"x-ali-response"`
+	Description        string                  `json:"description" yaml:"description"`
+	Json               OpenApiResponseContent  `json:"application/json" yaml:"application/json"`
+	AliParameters      map[string]AliParameter `json:"x-ali-parameters" yaml:"x-ali-parameters"`
+	AliBody            interface{}             `json:"x-ali-body" yaml:"x-ali-body"`
+	AliResponse        *AliResponse            `json:"x-ali-response" yaml:"x-ali-response"`
+	AliRequestCookies  []AliCookie             `json:"x-ali-request-cookies" yaml:"x-ali-request-cookies"`
+	AliResponseCookies []AliCookie             `json:"x-ali-response-cookies" yaml:"x-ali-response-cookies"`
 }
 
 type AliResponse struct {
@@ -214,20 +225,6 @@ type AliResponse struct {
 	Ignore                []string    `json:"ignore" yaml:"ignore"`
 	AcceptAdditionalProps bool        `json:"acceptAdditionalProps" yaml:"acceptAdditionalProps"`
 	Expected              interface{} `json:"expected" yaml:"expected"`
-}
-
-func (r AliResponse) Compare(actualPayload []byte) (bool, string) {
-	expectedPayload, err := json.Marshal(r.Expected)
-
-	if err != nil {
-		return false, fmt.Sprintf("Got unexpected marshalling error (%v) when reading expected response from spec", err)
-	}
-
-	opt := diff.DefaultJSONOptions()
-
-	res, details := diff.Compare(actualPayload, expectedPayload, &opt)
-
-	return res == diff.FullMatch || (res == diff.SupersetMatch && r.AcceptAdditionalProps), details
 }
 
 func (o OpenApiResponse) ResolveURL(rawUrl string, params []OpenApiParameter) string {
@@ -270,6 +267,13 @@ func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status i
 	request, _ := http.NewRequest(ctx.verb, resolvedURL, reader)
 	request.Header.Add("Accept", "application/json")
 
+	for _, c := range o.AliRequestCookies {
+		request.AddCookie(&http.Cookie{
+			Name:  c.Name,
+			Value: c.Value,
+		})
+	}
+
 	netClient := &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -289,6 +293,26 @@ func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status i
 		return
 	}
 
+	for _, c := range o.AliResponseCookies {
+		cookie := lookupSetCookie(c.Name, response)
+		t.Log("-----------------------------------> ", cookie)
+		if cookie == nil {
+			t.Fatalf("Got nothing for cookie %s", c.Name)
+		}
+		if cookie.Value != c.Value {
+			t.Fatalf("Got value %s when expected %s for cookie %s", cookie.Value, c.Value, c.Name)
+		}
+		if cookie.Domain != c.Domain {
+			t.Fatalf("Got Domain %s when expected %s for cookie %s", cookie.Domain, c.Domain, c.Name)
+		}
+		if cookie.HttpOnly != c.HttpOnly {
+			t.Fatalf("Got HttpOnly %v when expected %v for cookie %s", cookie.HttpOnly, c.HttpOnly, c.Name)
+		}
+		if cookie.Secure != c.Secure {
+			t.Fatalf("Got Secure %v when expected %v for cookie %s", cookie.HttpOnly, c.HttpOnly, c.Name)
+		}
+	}
+
 	actualPayload, err := io.ReadAll(response.Body)
 
 	if err != nil {
@@ -302,7 +326,20 @@ func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status i
 	} else {
 		t.Logf("Diff check pass for %s. Details : %s", string(actualPayload), diffDetails)
 	}
+}
 
+func (r AliResponse) Compare(actualPayload []byte) (bool, string) {
+	expectedPayload, err := json.Marshal(r.Expected)
+
+	if err != nil {
+		return false, fmt.Sprintf("Got unexpected marshalling error (%v) when reading expected response from spec", err)
+	}
+
+	opt := diff.DefaultJSONOptions()
+
+	res, details := diff.Compare(actualPayload, expectedPayload, &opt)
+
+	return res == diff.FullMatch || (res == diff.SupersetMatch && r.AcceptAdditionalProps), details
 }
 
 func ioReader(data interface{}) (io.Reader, error) {
@@ -319,4 +356,14 @@ type OpenApiResponseContent struct {
 
 type AliParameter struct {
 	Value any `json:"value" yaml:"value"`
+}
+
+func lookupSetCookie(name string, res *http.Response) *http.Cookie {
+	for _, c := range res.Cookies() {
+		if c.Name == name {
+			return c
+		}
+	}
+
+	return nil
 }
