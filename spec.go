@@ -140,6 +140,11 @@ func (o OpenApiOperation) runTests(t *testing.T, url, verb string) {
 				o.Responses.BadRequest.runTest(t, ctx, http.StatusBadRequest)
 			})
 		}
+		if o.Responses.Unauthorized != nil {
+			t.Run("401", func(t *testing.T) {
+				o.Responses.Unauthorized.runTest(t, ctx, http.StatusUnauthorized)
+			})
+		}
 		if o.Responses.NotFound != nil {
 			t.Run("404", func(t *testing.T) {
 				o.Responses.NotFound.runTest(t, ctx, http.StatusNotFound)
@@ -188,11 +193,12 @@ func (i *ParameterLocation) UnmarshalYAML(data *yaml.Node) (err error) {
 }
 
 type OpenApiResponses struct {
-	Ok         *OpenApiResponse `json:"200" yaml:"200"`
-	Created    *OpenApiResponse `json:"201" yaml:"201"`
-	BadRequest *OpenApiResponse `json:"400" yaml:"400"`
-	NotFound   *OpenApiResponse `json:"404" yaml:"404"`
-	Expired    *OpenApiResponse `json:"419" yaml:"419"`
+	Ok           *OpenApiResponse `json:"200" yaml:"200"`
+	Created      *OpenApiResponse `json:"201" yaml:"201"`
+	BadRequest   *OpenApiResponse `json:"400" yaml:"400"`
+	Unauthorized *OpenApiResponse `json:"401" yaml:"401"`
+	NotFound     *OpenApiResponse `json:"404" yaml:"404"`
+	Expired      *OpenApiResponse `json:"419" yaml:"419"`
 }
 
 type OpenApiResponse struct {
