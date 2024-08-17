@@ -299,10 +299,10 @@ func (o OpenApiResponse) runTest(t *testing.T, ctx operationRunContext, status i
 		if cookie == nil {
 			t.Fatalf("Got nothing for cookie %s", c.Name)
 		}
-		if cookie.Value != c.Value {
+		if c.Value != "" && cookie.Value != c.Value {
 			t.Fatalf("Got value %s when expected %s for cookie %s", cookie.Value, c.Value, c.Name)
 		}
-		if cookie.Domain != c.Domain {
+		if c.Domain != "" && cookie.Domain != c.Domain {
 			t.Fatalf("Got Domain %s when expected %s for cookie %s", cookie.Domain, c.Domain, c.Name)
 		}
 		if cookie.HttpOnly != c.HttpOnly {
